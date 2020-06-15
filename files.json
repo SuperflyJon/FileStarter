@@ -1,0 +1,72 @@
+﻿[
+ {
+  process:"outlook",
+  desktop:1,
+  monitor:1,
+  hassplash:true,
+  skipIfAlreadyRunning:true
+ },
+
+ {
+  process:"C:\\Users\\E1080832\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Teams.lnk"
+ },
+
+ {
+  process:"chrome",
+  desktop:1,
+  monitor:2,
+  state:"max"
+ },
+ 
+ {
+  process:"notepad",
+  arguments:"C:\\Users\\E1080832\\Documents\\Work\\todo.txt",
+  width:800,
+  height:600,
+  desktop:1,
+  monitor:1
+ },
+
+ {
+  process:"explorer",
+  arguments:"C:\\Projects\\CEDev",
+  desktop:2,
+  monitor:1
+ },
+
+ {
+  process:"%windir%\\system32\\mstsc.exe",
+  desktop:2,
+  monitor:2
+ },
+
+ {
+  process:"%windir%\\system32\\mstsc.exe",
+  arguments:"C:\\Users\\E1080832\\Documents\\ChertseyMachine.rdp",
+  desktop:3,
+  monitor:1
+ },
+
+ {
+  process:"chrome",
+  desktop:4,
+  monitor:1,
+  state:"max"
+ },
+
+ {
+  process:"excel",
+  arguments:"https://fisglobal.sharepoint.com/teams/5075/iworksrisk/prophet/operations/Prophet_Ops/Prophet%20Systems%20Development/PEQA-status%2092.xlsx?web=1",
+  desktop:4,
+  monitor:2,
+  state:"max"
+ },
+
+ {
+  process:"chrome",
+  arguments:["https://wiki.fnis.com/display/irisk/Business+Features", "https://fisglobal.sharepoint.com/:f:/r/sites/INSRiskMgmtDevelopment/Shared%20Documents/Prophet%20Release/Prophet%202020%20Q4?csf=1&web=1&e=R9H3H4"],
+  desktop:5,
+  monitor:2,
+  state:"max"
+ }
+]
