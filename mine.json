@@ -1,0 +1,99 @@
+﻿[
+ {
+  desktop:1,
+  process:"outlook",
+  monitor:1,
+  state:"max",
+  hassplash:true,
+  skipIfAlreadyRunning:true
+ },
+
+ {
+  process:"C:\\Users\\E1080832\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Teams.lnk",
+  processName:'Teams',
+  waitForClass:"Chrome_WidgetWin_1",
+  hasSplash:true,
+  skipIfAlreadyRunning:true
+ },
+
+ {
+  desktop:1,
+  process:"chrome",
+  arguments:["--new-window"],
+  monitor:2,
+  state:"max",
+  waitForClass:"Chrome_WidgetWin_1"
+ },
+ 
+ {
+  desktop:1,
+  process:"notepad",
+  arguments:"C:\\Users\\E1080832\\Documents\\Work\\todo.txt",
+  width:800,
+  height:600,
+  monitor:1
+ },
+
+
+ {
+  desktop:2,
+  process:"explorer",
+  arguments:"C:\\Projects\\CEDev",
+  monitor:1,
+  launchOnDesktop:true,
+  waitForClass:"CabinetWClass"
+ },
+
+ {
+  desktop:2,
+  process:"C:\\Program Files\\TortoiseSVN\\bin\\TortoiseProc.exe",
+  arguments:"/command:log /path C:\\Projects\\CEDev",
+  monitor:1,
+  state:"normal",
+  x:250, y:50, width:900, height:800
+ },
+
+ {
+  desktop:2,
+  process:"%windir%\\system32\\mstsc.exe",
+  monitor:2
+ },
+
+
+ {
+  desktop:3,
+  process:"%windir%\\system32\\mstsc.exe",
+  arguments:"C:\\Users\\E1080832\\Documents\\ChertseyMachine.rdp",
+  launchOnDesktop:true,
+  waitForClass:"Credential Dialog Xaml Host"
+ },
+
+
+ {
+  desktop:4,
+  process:"chrome",
+  arguments:["--new-window"],
+  monitor:1,
+  state:"max",
+  waitForClass:"Chrome_WidgetWin_1"
+ },
+
+ {
+  desktop:4,
+  process:"excel",
+  arguments:"https://fisglobal.sharepoint.com/teams/5075/iworksrisk/prophet/operations/Prophet_Ops/Prophet%20Systems%20Development/PEQA-status%2093.xlsx?web=1",
+  monitor:2,
+  hassplash:true,
+  state:"max"
+ },
+
+
+ {
+  desktop:5,
+  process:"chrome",
+  arguments:["--new-window https://wiki.fnis.com/display/irisk/Business+Features", "https://fisglobal.sharepoint.com/:f:/r/sites/INSRiskMgmtDevelopment/Shared%20Documents/Prophet%20Release/Prophet%202020%20Q4?csf=1&web=1&e=R9H3H4"],
+  monitor:2,
+  state:"max",
+  waitForClass:"Chrome_WidgetWin_1"
+ }
+]
