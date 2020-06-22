@@ -1,5 +1,7 @@
 ﻿[CmdletBinding()] Param([parameter(mandatory=$false)] [string]$data_filename)
 
+$showDebugMessages = $true
+
 cls
 
 if ($data_filename -eq '')
@@ -15,8 +17,6 @@ if (!(test-path -Path $data_filename -PathType leaf))
 . "$PSScriptRoot\VirtualDesktop.ps1"
 
 Set-StrictMode -Version Latest
-
-$showDebugMessages = $true
 
 $winApi = @"
 
@@ -230,7 +230,7 @@ Function ReadData($file)
     return $objects
 }
 
-funciton DebugMessage($msg)
+function DebugMessage($msg)
 {
     if ($showDebugMessages)
     {
@@ -265,7 +265,7 @@ function WaitForWindowToShow($hwnd)
         }
     }
 
-    write-host "$hwnd Showing"
+    DebugMessage "$hwnd Showing"
 }
 
 function WaitForWindowToStopShowing($hwnd)
@@ -282,7 +282,7 @@ function WaitForWindowToStopShowing($hwnd)
         }
     }
 
-    write-host "$hwnd Hidden"
+    DebugMessage "$hwnd Hidden"
 }
 
 function FindNewWindow($object, [ref]$retHwnd)
@@ -457,7 +457,7 @@ function TryToMove($object)
         }
 
         $destDesktop = Get-Desktop $($object.desktop - 1)
-        write-host "Moving $($object.hwnd) to desktop $($object.desktop) - $destDesktop"
+        DebugMessage "Moving $($object.hwnd) to desktop $($object.desktop) - $destDesktop"
         try
         {
             $object.hwnd | Move-Window $destDesktop | Out-Null
@@ -485,7 +485,7 @@ function TryToMove($object)
     if ($object.monitor -ne -1)
     {
         $screens = [System.Windows.Forms.Screen]::AllScreens
-        $screen = $($screens | ?{$_.DeviceName -like "*DISPLAY$($object.monitor)"})
+        $screen = $($screens | ?{$_.DeviceName -like "*DISPLAY*$($object.monitor)"})
         if (!$screen)
         {
             write-host "Monitor $($object.monitor) not present!"
@@ -565,6 +565,7 @@ $currentDesktop = Get-Desktop
 #Read data into array of objects
 #################
 $objects = ReadData "$data_filename"
+write-host "File read: $data_filename"
 
 #Start the requried processes
 #################
