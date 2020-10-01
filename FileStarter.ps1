@@ -254,10 +254,12 @@ function OutputObjectMessage($object, $msg)
 function WaitForWindowToShow($hwnd)
 {
     $trys = 0
+    $amount = 100
     while (![Win.API]::IsWindowShowing($hwnd))
     {
-        start-sleep -Milliseconds 100
+        start-sleep -Milliseconds $amount
         $trys++
+        $amount += 100
         if ($trys -eq 20)
         {
             write-host "$hwnd not yet showing (timed out)"
@@ -527,8 +529,8 @@ function TryToMove($object)
             }
 
             # Calculate origin of monitor and adjust x and y for this monitor
-            $object.x += $screen.Bounds.X
-            $object.y += $screen.Bounds.Y
+            $object.x = $([int]$object.x) + $screen.Bounds.X
+            $object.y = $([int]$object.y) + $screen.Bounds.Y
         }
     }
 
