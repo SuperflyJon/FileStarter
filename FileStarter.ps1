@@ -176,12 +176,12 @@ Function ReadData($file)
                 'width' { $object.width = [int]$value }
                 'height' { $object.height = [int]$value }
                 'state' { $object.state = $value }
-                'hassplash' { $object.hassplash = [bool]$value }
-                'showOnAllDesktops' { $object.showOnAllDesktops = [bool]$value }
-                'skipIfAlreadyRunning' { $object.skipIfAlreadyRunning = [bool]$value }
-                'launchOnDesktop' { $object.launchOnDesktop = [bool]$value }
+                'hassplash' { $object.hassplash = [System.Convert]::ToBoolean($value) }
+                'showOnAllDesktops' { $object.showOnAllDesktops = [System.Convert]::ToBoolean($value) }
+                'skipIfAlreadyRunning' { $object.skipIfAlreadyRunning = [System.Convert]::ToBoolean($value) }
+                'launchOnDesktop' { $object.launchOnDesktop = [System.Convert]::ToBoolean($value) }
                 'waitForClass' { $object.waitForClass = $value }
-                'waitForProcessToClose' { $object.waitForProcessToClose = [bool]$value }
+                'waitForProcessToClose' { $object.waitForProcessToClose = [System.Convert]::ToBoolean($value) }
                 default { write-host "Unknown setting: $_ = $value" }
             }
         }
