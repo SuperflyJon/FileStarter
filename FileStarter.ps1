@@ -169,19 +169,19 @@ Function ReadData($file)
                 'process' { $object.process = $value }
                 'processName' { $object.processName = $value }
                 'arguments' { $object.arguments += $value }
-                'desktop' { $object.desktop = $value }
-                'monitor' { $object.monitor = $value }
-                'x' { $object.x = $value }
-                'y' { $object.y = $value }
-                'width' { $object.width = $value }
-                'height' { $object.height = $value }
+                'desktop' { $object.desktop = [int]$value }
+                'monitor' { $object.monitor = [int]$value }
+                'x' { $object.x = [int]$value }
+                'y' { $object.y = [int]$value }
+                'width' { $object.width = [int]$value }
+                'height' { $object.height = [int]$value }
                 'state' { $object.state = $value }
-                'hassplash' { $object.hassplash = $value }
-                'showOnAllDesktops' { $object.showOnAllDesktops = $value }
-                'skipIfAlreadyRunning' { $object.skipIfAlreadyRunning = $value }
-                'launchOnDesktop' { $object.launchOnDesktop = $value }
+                'hassplash' { $object.hassplash = [bool]$value }
+                'showOnAllDesktops' { $object.showOnAllDesktops = [bool]$value }
+                'skipIfAlreadyRunning' { $object.skipIfAlreadyRunning = [bool]$value }
+                'launchOnDesktop' { $object.launchOnDesktop = [bool]$value }
                 'waitForClass' { $object.waitForClass = $value }
-                'waitForProcessToClose' { $object.waitForProcessToClose = $value }
+                'waitForProcessToClose' { $object.waitForProcessToClose = [bool]$value }
                 default { write-host "Unknown setting: $_ = $value" }
             }
         }
@@ -529,8 +529,8 @@ function TryToMove($object)
             }
 
             # Calculate origin of monitor and adjust x and y for this monitor
-            $object.x = $([int]$object.x) + $screen.Bounds.X
-            $object.y = $([int]$object.y) + $screen.Bounds.Y
+            $object.x = $object.x + $screen.Bounds.X
+            $object.y = $object.y + $screen.Bounds.Y
         }
     }
 
