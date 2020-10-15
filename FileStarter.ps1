@@ -160,7 +160,7 @@ Function ReadData($file)
 
     foreach ($item in $data)
     {
-    	$object = [PSCustomObject] @{ process = ''; arguments = @(); desktop = -1; monitor = -1; x = -1; y = -1; width = -1; height = -1; state = ''; hasSplash = $false; showOnAllDesktops = $false; skipIfAlreadyRunning = $false; hwnd = 0; done = $false; proc = 0; index = -1; processName = ''; launchOnDesktop = $false; waitForClass = ''; waitForProcessToClose = $false; retry=0; windowClassList = 0 }
+    	$object = [PSCustomObject] @{ process = ''; arguments = @(); desktop = -1; monitor = -1; x = -1; y = -1; width = -1; height = -1; state = ''; hasSplash = $false; showOnAllDesktops = $false; skipIfAlreadyRunning = $false; hwnd = 0; done = $false; proc = 0; index = -1; processName = ''; launchOnDesktop = $false; waitForClass = ''; waitForProcessToClose = $false; retry=0; windowClassList = 0; desktopName = '' }
 
         $item.PSOBject.Properties | ForEach-Object {
             $value = $_.Value
@@ -182,6 +182,7 @@ Function ReadData($file)
                 'launchOnDesktop' { $object.launchOnDesktop = [System.Convert]::ToBoolean($value) }
                 'waitForClass' { $object.waitForClass = $value }
                 'waitForProcessToClose' { $object.waitForProcessToClose = [System.Convert]::ToBoolean($value) }
+                'DesktopName' { $object.desktopName = $value }
                 default { write-host "Unknown setting: $_ = $value" }
             }
         }
@@ -573,6 +574,17 @@ write-host "File read: $data_filename"
 #################
 foreach ($object in $objects)
 {
+    if ($object.desktopName -ne '')
+    {
+    	if ($object.desktop -eq -1)
+	{
+		write-host "Attempt to name desktop but no desktop specified!"		
+	}
+	else
+	{
+		Set-DesktopName $($object.desktop - 1) $object.desktopName
+	}
+    }
     StartProcess $object
     if (!$object.done -and
         # Check if anything needs to move
@@ -631,8 +643,8 @@ write-host "fin"
 # SIG # Begin signature block
 # MIIFdgYJKoZIhvcNAQcCoIIFZzCCBWMCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUc9kY1eFmBFafiimIF6Jm2ir
-# PhqgggMOMIIDCjCCAfKgAwIBAgIQJ7QhgRtobKJFyrX3zvZHpjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUn52Z3A7HsNpovHQ0vKrwbrP4
+# dRWgggMOMIIDCjCCAfKgAwIBAgIQJ7QhgRtobKJFyrX3zvZHpjANBgkqhkiG9w0B
 # AQUFADAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25pbmcwHhcNMjAwOTAyMTUw
 # NjQ0WhcNMjEwOTAyMTUyNjQ0WjAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25p
 # bmcwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDZgckf5EM3ekbD9UHM
@@ -652,11 +664,11 @@ write-host "fin"
 # Y2FsIENvZGUgU2lnbmluZwIQJ7QhgRtobKJFyrX3zvZHpjAJBgUrDgMCGgUAoHgw
 # GAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
 # NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQUEVvgsPwQL/2pkQ0KlVTZpVggSI8wDQYJKoZIhvcNAQEBBQAEggEAzH8fGKg3
-# O3GIaU5qIMsDaqlU31KMo8zYPBgz5Auz2V15htbYhNUXY1S5zGmAhLr9aTZvUrjG
-# hNYwLf8+AzxLYHj/HyQROrNHmwgfugcVT/WmBuzo8d98JShrijui0C6nOPTu9Nzi
-# hFkm7Q91OZtUnsjjRMYgDoh5n0MldrUAXqz9CF9GSsPhdwa0jXPWBgG3pBvwT2cN
-# S4lFnYWEXcMK2wEjky+5akqw/npvlZ8sYyUUXRQMvWx28RJvy4xbFZe81eCSyGMQ
-# 6tqe7ee5wLXlsucXbEKrDtTlK679lUmb8gi92k6UGvw8vPRN8DfiDP1Bd/pCO3sQ
-# UxOm8v0ZD3dOXg==
+# FgQUaeAfjuVBBEuuEQoOhGSyK1mM1icwDQYJKoZIhvcNAQEBBQAEggEAMeFsjDiL
+# 7QUFrJ7Q/cSe/wEzripXgIcCNWS7TB5CCJ5T/sZEP4BC7fmU66pcprV6WYLHkXih
+# p8L/TacmlMdsl54WO7iw3S/e5PniHBcRWDhIkJ4KvUsaLeu2lOGkZYOX6BsMEp6P
+# RgnP2KsNQgXEORH01tZbHSfj0T9v5R2TAhUOnDxS/htfyqbaUNM+iDKgXCzVgnFW
+# sKGztCanaD63Lqv8bVHp1WGCQZH5zVavI9/QbhHDkBkMKlGjJ3rLb3ktYPopLjuW
+# ZCZB5B60tDXyBeHgfzG7mwIexGC/IhJrEb3MpXtXD8JlXbMQexJjwGdsH3kgzC/f
+# 5HcbYO+kVvtniA==
 # SIG # End signature block

@@ -10,6 +10,7 @@
     "process": "explorer",
     "arguments": "C:\\Windows\\System32",
     "desktop": 2,
+    "desktopname" : "Games",
     "monitor": 2,
     "waitForClass": "CabinetWClass"
   },
