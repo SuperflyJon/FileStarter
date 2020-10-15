@@ -16,6 +16,7 @@ Simple processes (e.g. notepad) just create a new window and will work easily.  
 - 'arguments' | A list of arguments to pass to the process
 - 'processName' | A pretty name for the output, also an override for the process name checked in 'skipIfAlreadyRunning'
 - 'desktop' | The number of the desktop to put the main window on, if it doesn't exist it will be created
+- 'desktopname' | Will rename desktop in windows task view (requires version 2004 of windows 10)
 - 'monitor' | The monitor number to put the window on
 - 'x', 'y' | The x and y co-ord of where to put the window.  This is from (0, 0) on the specific monitor
 - 'width', 'height' | The width and height to set the window size
