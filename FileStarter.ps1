@@ -460,8 +460,8 @@ function TryToMove($object)
         }
 
         $destDesktop = Get-Desktop $($object.desktop - 1)
-        DebugMessage "Moving $($object.hwnd) to desktop $($object.desktop) - $destDesktop"
-        try
+	DebugMessage "Moving $($object.hwnd) to desktop $($object.desktop) - $(Get-DesktopName $destDesktop)”
+	try
         {
             $object.hwnd | Move-Window $destDesktop | Out-Null
         }
@@ -643,8 +643,8 @@ write-host "fin"
 # SIG # Begin signature block
 # MIIFdgYJKoZIhvcNAQcCoIIFZzCCBWMCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUn52Z3A7HsNpovHQ0vKrwbrP4
-# dRWgggMOMIIDCjCCAfKgAwIBAgIQJ7QhgRtobKJFyrX3zvZHpjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTWoCQ9sPmPU5KZEtQu7cNG8O
+# 1aygggMOMIIDCjCCAfKgAwIBAgIQJ7QhgRtobKJFyrX3zvZHpjANBgkqhkiG9w0B
 # AQUFADAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25pbmcwHhcNMjAwOTAyMTUw
 # NjQ0WhcNMjEwOTAyMTUyNjQ0WjAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25p
 # bmcwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDZgckf5EM3ekbD9UHM
@@ -664,11 +664,11 @@ write-host "fin"
 # Y2FsIENvZGUgU2lnbmluZwIQJ7QhgRtobKJFyrX3zvZHpjAJBgUrDgMCGgUAoHgw
 # GAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
 # NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQUaeAfjuVBBEuuEQoOhGSyK1mM1icwDQYJKoZIhvcNAQEBBQAEggEAMeFsjDiL
-# 7QUFrJ7Q/cSe/wEzripXgIcCNWS7TB5CCJ5T/sZEP4BC7fmU66pcprV6WYLHkXih
-# p8L/TacmlMdsl54WO7iw3S/e5PniHBcRWDhIkJ4KvUsaLeu2lOGkZYOX6BsMEp6P
-# RgnP2KsNQgXEORH01tZbHSfj0T9v5R2TAhUOnDxS/htfyqbaUNM+iDKgXCzVgnFW
-# sKGztCanaD63Lqv8bVHp1WGCQZH5zVavI9/QbhHDkBkMKlGjJ3rLb3ktYPopLjuW
-# ZCZB5B60tDXyBeHgfzG7mwIexGC/IhJrEb3MpXtXD8JlXbMQexJjwGdsH3kgzC/f
-# 5HcbYO+kVvtniA==
+# FgQU60osHparN0Gv+vXxSW94HsI3N9EwDQYJKoZIhvcNAQEBBQAEggEAb+mCpSbs
+# HAdzou2Zv6MBwkU8n+z6fhwthRyOR5OKHwlE6eYr0hQk63wIMD4O+Wem4YKzFych
+# fjR6vbYkGwFT3KSxJdN68iArQh9nJyBAzHOjbyOGWBzQ3wHCes1qvo8eqGhd6/xM
+# i5HA5h3zcd8AA1fLyztFhBBoaPHAxJinDJxn7LNXc4LZyTksXcxuOCXXXfgWRjMc
+# 6iZZO6axq5oXfCcVzZS31AW43Ocb8wrknjuuMQM1dOIvCxX3DH5eMsb7O2PD2iz1
+# Rw3ncfqFkN8+Aci7wlEG8lfg47+FsEIPb1Zo7PXbFj/4lZYNJU0DaFEXGqnaubJ0
+# SAzdhZUwo9/juQ==
 # SIG # End signature block
