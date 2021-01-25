@@ -560,10 +560,13 @@ function TryToMove($object)
 #Main logic
 
 #Make running window on top and locked to all desktops (so output can be seen)
-$currentWindow = Get-Process | Where ID -eq $PID | % { $_.MainWindowHandle }
-$currentWindow | Pin-Window
-$currentDesktop = Get-Desktop
-[Win.API]::SetWindowOnTop($currentWindow)
+$currentWindow = Get-Process -ID $PID | % { $_.MainWindowHandle }
+if ($currentWindow)
+{
+	$currentWindow | Pin-Window
+	$currentDesktop = Get-Desktop
+	[Win.API]::SetWindowOnTop($currentWindow)
+}
 
 #Read data into array of objects
 #################
@@ -626,12 +629,15 @@ foreach ($object in $objects)
     }
 }
 
-#Restore window to normal state
-$currentWindow | UnPin-Window
-$currentWindow | Move-Window $currentDesktop | Out-Null
-$currentDesktop | Switch-Desktop
-[Win.API]::SetWindowNotOnTop($currentWindow)
- 
+if ($currentWindow)
+{
+	#Restore window to normal state
+	$currentWindow | UnPin-Window
+	$currentWindow | Move-Window $currentDesktop | Out-Null
+	$currentDesktop | Switch-Desktop
+	[Win.API]::SetWindowNotOnTop($currentWindow)
+}
+
 $childConsole = Get-WmiObject win32_process | where {($_.ParentProcessID -eq $pid) -and ($_.Name -eq "conhost.exe")}
 if ($childConsole)
 {
@@ -639,36 +645,3 @@ if ($childConsole)
 }
 
 write-host "fin"
-
-# SIG # Begin signature block
-# MIIFdgYJKoZIhvcNAQcCoIIFZzCCBWMCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
-# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTWoCQ9sPmPU5KZEtQu7cNG8O
-# 1aygggMOMIIDCjCCAfKgAwIBAgIQJ7QhgRtobKJFyrX3zvZHpjANBgkqhkiG9w0B
-# AQUFADAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25pbmcwHhcNMjAwOTAyMTUw
-# NjQ0WhcNMjEwOTAyMTUyNjQ0WjAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25p
-# bmcwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDZgckf5EM3ekbD9UHM
-# uPAb3n+ruyIkD5y/uRfKbjQ9R6hpjzz5MK8qD9EOPn1rX9QUy1QJyuGQENCbOAot
-# k9UE6NUtdv6cOT+4EHtcyfpW03l1LWaBpplS+4CBddfig03rpyaqQuVJe93WQ4Ar
-# eUAvWozM9/Smt39MxwsyneTAHWzPFJnBXBry3OfGqg7sfJdFh02+KDOfgBfDUrGT
-# dFiXzwPyZt1MfuHbQUvd+o1ErneWSqKXFjnxP/8va7mSLFjXEDZqLhm+p96jlGEs
-# 0nNSLf7AfG/ZMTKfMY/X77fd08U1Dy//xc/e4qkraQfiN5TJCz8im/E6WFzrF1eQ
-# XRJFAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcD
-# AzAdBgNVHQ4EFgQU9nmxQrbevGH/Lmr0GxeZa9LIwJ0wDQYJKoZIhvcNAQEFBQAD
-# ggEBAC4XGOmt8kosp5Wdu5FbVmLUanHNUcA0S46UyEyNK8yBDnGiNJf0hVG5D/Jh
-# w4mk3BuKZjFcsV5bA1ZKcmE6hrUFxmGGfgnFmEGmdI+Tt9vR0bv3re7SG4jlaMnu
-# VgOEjn+AIpon8djn10Warb6q45Q28O+3lWP0D832Sx69sI06QNbpzB88QQZJNgBD
-# 29AmDvESdzCyCRH1aJAN93AgjwmXkTzgfnWL3N6myKYRMmSfShdJD2s/GxoB0hZy
-# 1OleXmsYOEZP9KUkqo5p7eW0Koxq0EdzTmuvJSUeRr7MT+PpVrp/vaKYRg/DTGxW
-# jcTmxfUgz2AjWi+8UcjXZAjw95kxggHSMIIBzgIBATAxMB0xGzAZBgNVBAMMEkxv
-# Y2FsIENvZGUgU2lnbmluZwIQJ7QhgRtobKJFyrX3zvZHpjAJBgUrDgMCGgUAoHgw
-# GAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
-# NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQU60osHparN0Gv+vXxSW94HsI3N9EwDQYJKoZIhvcNAQEBBQAEggEAb+mCpSbs
-# HAdzou2Zv6MBwkU8n+z6fhwthRyOR5OKHwlE6eYr0hQk63wIMD4O+Wem4YKzFych
-# fjR6vbYkGwFT3KSxJdN68iArQh9nJyBAzHOjbyOGWBzQ3wHCes1qvo8eqGhd6/xM
-# i5HA5h3zcd8AA1fLyztFhBBoaPHAxJinDJxn7LNXc4LZyTksXcxuOCXXXfgWRjMc
-# 6iZZO6axq5oXfCcVzZS31AW43Ocb8wrknjuuMQM1dOIvCxX3DH5eMsb7O2PD2iz1
-# Rw3ncfqFkN8+Aci7wlEG8lfg47+FsEIPb1Zo7PXbFj/4lZYNJU0DaFEXGqnaubJ0
-# SAzdhZUwo9/juQ==
-# SIG # End signature block
