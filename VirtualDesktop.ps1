@@ -1,5 +1,5 @@
 # Author: Markus Scholtes, 2017/05/08
-# Version 2.5 - support for naming virtual desktops, 2020/06/27
+# Version 2.9 - support for Windows 10 21H2 and Windows 11, 2021/10/18
 
 # prefer $PSVersionTable.BuildVersion to [Environment]::OSVersion.Version
 # since a wrong Windows version might be returned in RunSpaces
@@ -9,7 +9,7 @@ if ($PSVersionTable.PSVersion.Major -lt 6)
 	$OSBuild = $PSVersionTable.BuildVersion.Build
 }
 else
-{ # Powershell 6.x
+{ # Powershell 6.x or up
 	$OSVer = [Environment]::OSVersion.Version.Major
 	$OSBuild = [Environment]::OSVersion.Version.Build
 }
@@ -29,17 +29,25 @@ if ($OSBuild -lt 14393)
 $Windows1607 = $TRUE
 $Windows1803 = $FALSE
 $Windows1809 = $FALSE
+$Windows21H2 = $FALSE
 if ($OSBuild -ge 17134)
 {
 	$Windows1607 = $FALSE
 	$Windows1803 = $TRUE
-	$Windows1809 = $FALSE
 }
 if ($OSBuild -ge 17661)
 {
 	$Windows1607 = $FALSE
 	$Windows1803 = $FALSE
 	$Windows1809 = $TRUE
+}
+
+if ($OSBuild -ge 19044)
+{
+	$Windows1607 = $FALSE
+	$Windows1803 = $FALSE
+	$Windows1809 = $FALSE
+	$Windows21H2 = $TRUE
 }
 
 Add-Type -Language CSharp -TypeDefinition @"
@@ -106,8 +114,8 @@ $(if ($Windows1803) {@"
 	[InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
 	[Guid("871F602A-2B58-42B4-8C4B-6C43D642C06F")]
 "@ })
-$(if ($Windows1809) {@"
-// Windows 10 1809:
+$(if ($Windows1809 -or $Windows21H2) {@"
+// Windows 10 1809 and 21H2:
 	[InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
 	[Guid("372E1D3B-38D3-42E4-A15B-8AB2B178F513")]
 "@ })
@@ -166,7 +174,7 @@ $(if ($Windows1803) {@"
 		int Unknown3(out int unknown);
 		int Unknown4(out int unknown);
 "@ })
-$(if ($Windows1809) {@"
+$(if ($Windows1809 -or $Windows21H2) {@"
 		int Unknown1(out int unknown);
 		int Unknown2(out int unknown);
 		int Unknown3(out int unknown);
@@ -192,8 +200,8 @@ $(if ($Windows1803) {@"
 // Windows 10 1803:
 	[Guid("2C08ADF0-A386-4B35-9250-0FE183476FCC")]
 "@ })
-$(if ($Windows1809) {@"
-// Windows 10 1809:
+$(if ($Windows1809 -or $Windows21H2) {@"
+// Windows 10 1809 and 21H2:
 	[Guid("1841C6D7-4F9D-42C0-AF41-8747538F10E5")]
 "@ })
 	internal interface IApplicationViewCollection
@@ -205,8 +213,8 @@ $(if ($Windows1809) {@"
 		int GetViewForApplication(object application, out IApplicationView view);
 		int GetViewForAppUserModelId(string id, out IApplicationView view);
 		int GetViewInFocus(out IntPtr view);
-$(if ($Windows1803 -or $Windows1809) {@"
-// Windows 10 1803 and 1809:
+$(if ($Windows1803 -or $Windows1809 -or $Windows21H2) {@"
+// Windows 10 1803 and 1809 and 21H2:
 		int Unknown1(out IntPtr view);
 "@ })
 		void RefreshCollection();
@@ -224,34 +232,56 @@ $(if ($Windows1803) {@"
 
 	[ComImport]
 	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+$(if ($Windows21H2) {@"
+// Windows 10 21H2:
+	[Guid("536D3495-B208-4CC9-AE26-DE8111275BF8")]
+"@ } else {@"
+// Windows 10 before 21H2:
 	[Guid("FF72FFDD-BE7E-43FC-9C03-AD81681E88E4")]
+"@ })
 	internal interface IVirtualDesktop
 	{
 		bool IsViewVisible(IApplicationView view);
 		Guid GetId();
+$(if ($Windows21H2) {@"
+		IntPtr Unknown1();
+		[return: MarshalAs(UnmanagedType.HString)]
+		string GetName();
+		[return: MarshalAs(UnmanagedType.HString)]
+		string GetWallpaperPath();
+"@ })
 	}
-
-/*
-IVirtualDesktop2 not used now (available since Win 10 2004), instead reading names out of registry for compatibility reasons
-Excample code:
-IVirtualDesktop2 ivd2;
-string desktopName;
-ivd2.GetName(out desktopName);
-Console.WriteLine("Name of desktop: " + desktopName);
 
 	[ComImport]
 	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-	[Guid("31EBDE3F-6EC3-4CBD-B9FB-0EF6D09B41F4")]
-	internal interface IVirtualDesktop2
+$(if ($Windows21H2) {@"
+// Windows 10 21H2:
+	[Guid("B2F925B9-5A0F-4D2E-9F4D-2B1507593C10")]
+	internal interface IVirtualDesktopManagerInternal
 	{
-		bool IsViewVisible(IApplicationView view);
-		Guid GetId();
-		void GetName([MarshalAs(UnmanagedType.HString)] out string name);
+		int GetCount(IntPtr hWndOrMon);
+		void MoveViewToDesktop(IApplicationView view, IVirtualDesktop desktop);
+		bool CanViewMoveDesktops(IApplicationView view);
+		IVirtualDesktop GetCurrentDesktop(IntPtr hWndOrMon);
+		void GetDesktops(IntPtr hWndOrMon, out IObjectArray desktops);
+		[PreserveSig]
+		int GetAdjacentDesktop(IVirtualDesktop from, int direction, out IVirtualDesktop desktop);
+		void SwitchDesktop(IntPtr hWndOrMon, IVirtualDesktop desktop);
+		IVirtualDesktop CreateDesktop(IntPtr hWndOrMon);
+		void MoveDesktop(IVirtualDesktop desktop, IntPtr hWndOrMon, int nIndex);
+		void RemoveDesktop(IVirtualDesktop desktop, IVirtualDesktop fallback);
+		IVirtualDesktop FindDesktop(ref Guid desktopid);
+		void GetDesktopSwitchIncludeExcludeViews(IVirtualDesktop desktop, out IObjectArray unknown1, out IObjectArray unknown2);
+		void SetDesktopName(IVirtualDesktop desktop, [MarshalAs(UnmanagedType.HString)] string name);
+		void SetDesktopWallpaper(IVirtualDesktop desktop, [MarshalAs(UnmanagedType.HString)] string path);
+		void UpdateWallpaperPathForAllDesktops([MarshalAs(UnmanagedType.HString)] string path);
+		void CopyDesktopState(IApplicationView pView0, IApplicationView pView1);
+		int GetDesktopIsPerMonitor();
+		void SetDesktopIsPerMonitor(bool state);
 	}
-*/
 
-	[ComImport]
-	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+"@ } else {@"
+// Windows 10 before 21H2:
 	[Guid("F31574D6-B682-4CDC-BD56-1827860ABEC6")]
 	internal interface IVirtualDesktopManagerInternal
 	{
@@ -287,6 +317,7 @@ Console.WriteLine("Name of desktop: " + desktopName);
 		void Unknown1(IVirtualDesktop desktop, out IntPtr unknown1, out IntPtr unknown2);
 		void SetName(IVirtualDesktop desktop, [MarshalAs(UnmanagedType.HString)] string name);
 	}
+"@ })
 
 	[ComImport]
 	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -337,29 +368,43 @@ Console.WriteLine("Name of desktop: " + desktopName);
 		{
 			var shell = (IServiceProvider10)Activator.CreateInstance(Type.GetTypeFromCLSID(Guids.CLSID_ImmersiveShell));
 			VirtualDesktopManagerInternal = (IVirtualDesktopManagerInternal)shell.QueryService(Guids.CLSID_VirtualDesktopManagerInternal, typeof(IVirtualDesktopManagerInternal).GUID);
+$(if (-not $Windows21H2) {@"
+// Windows 10 before 21H2:
 			try {
 				VirtualDesktopManagerInternal2 = (IVirtualDesktopManagerInternal2)shell.QueryService(Guids.CLSID_VirtualDesktopManagerInternal, typeof(IVirtualDesktopManagerInternal2).GUID);
 			}
 			catch {
 				VirtualDesktopManagerInternal2 = null;
 			}
+"@ })
 			VirtualDesktopManager = (IVirtualDesktopManager)Activator.CreateInstance(Type.GetTypeFromCLSID(Guids.CLSID_VirtualDesktopManager));
 			ApplicationViewCollection = (IApplicationViewCollection)shell.QueryService(typeof(IApplicationViewCollection).GUID, typeof(IApplicationViewCollection).GUID);
 			VirtualDesktopPinnedApps = (IVirtualDesktopPinnedApps)shell.QueryService(Guids.CLSID_VirtualDesktopPinnedApps, typeof(IVirtualDesktopPinnedApps).GUID);
 		}
 
 		internal static IVirtualDesktopManagerInternal VirtualDesktopManagerInternal;
+$(if (-not $Windows21H2) {@"
+// Windows 10 before 21H2:
 		internal static IVirtualDesktopManagerInternal2 VirtualDesktopManagerInternal2;
+"@ })
 		internal static IVirtualDesktopManager VirtualDesktopManager;
 		internal static IApplicationViewCollection ApplicationViewCollection;
 		internal static IVirtualDesktopPinnedApps VirtualDesktopPinnedApps;
 
 		internal static IVirtualDesktop GetDesktop(int index)
 		{	// get desktop with index
+$(if (-not $Windows21H2) {@"
 			int count = VirtualDesktopManagerInternal.GetCount();
+"@ } else {@"
+			int count = VirtualDesktopManagerInternal.GetCount(IntPtr.Zero);
+"@ })
 			if (index < 0 || index >= count) throw new ArgumentOutOfRangeException("index");
 			IObjectArray desktops;
+$(if (-not $Windows21H2) {@"
 			VirtualDesktopManagerInternal.GetDesktops(out desktops);
+"@ } else {@"
+			VirtualDesktopManagerInternal.GetDesktops(IntPtr.Zero, out desktops);
+"@ })
 			object objdesktop;
 			desktops.GetAt(index, typeof(IVirtualDesktop).GUID, out objdesktop);
 			Marshal.ReleaseComObject(desktops);
@@ -371,9 +416,17 @@ Console.WriteLine("Name of desktop: " + desktopName);
 			int index = -1;
 			Guid IdSearch = desktop.GetId();
 			IObjectArray desktops;
+$(if (-not $Windows21H2) {@"
 			VirtualDesktopManagerInternal.GetDesktops(out desktops);
+"@ } else {@"
+			VirtualDesktopManagerInternal.GetDesktops(IntPtr.Zero, out desktops);
+"@ })
 			object objdesktop;
+$(if (-not $Windows21H2) {@"
 			for (int i = 0; i < VirtualDesktopManagerInternal.GetCount(); i++)
+"@ } else {@"
+			for (int i = 0; i < VirtualDesktopManagerInternal.GetCount(IntPtr.Zero); i++)
+"@ })
 			{
 				desktops.GetAt(i, typeof(IVirtualDesktop).GUID, out objdesktop);
 				if (IdSearch.CompareTo(((IVirtualDesktop)objdesktop).GetId()) == 0)
@@ -410,13 +463,65 @@ Console.WriteLine("Name of desktop: " + desktopName);
 
 	public class Desktop
 	{
+		// open registry key
+		[DllImport("advapi32.dll", CharSet=CharSet.Auto)]
+		private static extern int RegOpenKeyEx(UIntPtr hKey, string subKey, int ulOptions, int samDesired, out UIntPtr hkResult);
+
+		// read registry value
+		[DllImport("advapi32.dll", SetLastError=true)]
+		private static extern uint RegQueryValueEx(UIntPtr hKey, string lpValueName, int lpReserved, ref int lpType, IntPtr lpData, ref int lpcbData);
+
+		// close registry key
+		[DllImport("advapi32.dll", SetLastError=true)]
+		private static extern int RegCloseKey(UIntPtr hKey);
+
 		// get window handle of current console window (even if powershell started in cmd)
 		[DllImport("Kernel32.dll")]
 		public static extern IntPtr GetConsoleWindow();
 
+		// get process id to window handle
+		[DllImport("user32.dll")]
+		private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+
 		// get handle of active window
 		[DllImport("user32.dll")]
 		public static extern IntPtr GetForegroundWindow();
+
+		private static UIntPtr HKEY_CURRENT_USER = new UIntPtr(0x80000001u);
+		private const int KEY_READ = 0x20019;
+
+		private static string GetRegistryString(string registryPath, string valName)
+		{ // reads string value out of user registry
+			UIntPtr hKey = UIntPtr.Zero;
+			IntPtr pResult = IntPtr.Zero;
+			string Result = null;
+
+			try
+			{
+				if (RegOpenKeyEx(HKEY_CURRENT_USER, registryPath, 0, KEY_READ, out hKey) == 0)
+				{
+					int size = 0;
+					int type = 1; // REG_SZ
+
+					uint retVal = RegQueryValueEx(hKey, valName, 0, ref type, IntPtr.Zero, ref size);
+					if (size != 0)
+					{
+						pResult = Marshal.AllocHGlobal(size);
+
+						retVal = RegQueryValueEx(hKey, valName, 0, ref type, pResult, ref size);
+						if (retVal == 0) { Result = Marshal.PtrToStringAnsi(pResult); }
+					}
+				}
+			}
+			catch { }
+			finally
+			{
+				if (hKey != UIntPtr.Zero) { RegCloseKey(hKey); }
+				if (pResult != IntPtr.Zero) { Marshal.FreeHGlobal(pResult); }
+			}
+
+			return Result;
+		}
 
 		private IVirtualDesktop ivd;
 		private Desktop(IVirtualDesktop desktop) { this.ivd = desktop; }
@@ -434,12 +539,20 @@ Console.WriteLine("Name of desktop: " + desktopName);
 
 		public static int Count
 		{ // return the number of desktops
+$(if (-not $Windows21H2) {@"
 			get { return DesktopManager.VirtualDesktopManagerInternal.GetCount(); }
+"@ } else {@"
+			get { return DesktopManager.VirtualDesktopManagerInternal.GetCount(IntPtr.Zero); }
+"@ })
 		}
 
 		public static Desktop Current
 		{ // returns current desktop
+$(if (-not $Windows21H2) {@"
 			get { return new Desktop(DesktopManager.VirtualDesktopManagerInternal.GetCurrentDesktop()); }
+"@ } else {@"
+			get { return new Desktop(DesktopManager.VirtualDesktopManagerInternal.GetCurrentDesktop(IntPtr.Zero)); }
+"@ })
 		}
 
 		public static Desktop FromIndex(int index)
@@ -466,7 +579,7 @@ Console.WriteLine("Name of desktop: " + desktopName);
 			// read desktop name in registry
 			string desktopName = null;
 			try {
-				desktopName = (string)Microsoft.Win32.Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops\\Desktops\\{" + guid.ToString() + "}", "Name", null);
+				desktopName = GetRegistryString("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops\\Desktops\\{" + guid.ToString() + "}", "Name");
 			}
 			catch { }
 
@@ -485,7 +598,7 @@ Console.WriteLine("Name of desktop: " + desktopName);
 			// read desktop name in registry
 			string desktopName = null;
 			try {
-				desktopName = (string)Microsoft.Win32.Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops\\Desktops\\{" + guid.ToString() + "}", "Name", null);
+				desktopName = GetRegistryString("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops\\Desktops\\{" + guid.ToString() + "}", "Name");
 			}
 			catch { }
 
@@ -497,11 +610,48 @@ Console.WriteLine("Name of desktop: " + desktopName);
 			return desktopName;
 		}
 
+		public static bool HasDesktopNameFromIndex(int index)
+		{ // return true is desktop is named or false if it has no name
+			Guid guid = DesktopManager.GetDesktop(index).GetId();
+
+			// read desktop name in registry
+			string desktopName = null;
+			try {
+				desktopName = GetRegistryString("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops\\Desktops\\{" + guid.ToString() + "}", "Name");
+			}
+			catch { }
+
+			// name found?
+			if (string.IsNullOrEmpty(desktopName))
+				return false;
+			else
+				return true;
+		}
+
+$(if ($Windows21H2) {@"
+		public static string DesktopWallpaperFromIndex(int index)
+		{ // return name of desktop wallpaper from index (-> index = 0..Count-1)
+
+			// get desktop name
+			string desktopwppath = "";
+			try {
+				desktopwppath = DesktopManager.GetDesktop(index).GetWallpaperPath();
+			}
+			catch { }
+
+			return desktopwppath;
+		}
+"@ })
+
 		public static int SearchDesktop(string partialName)
 		{ // get index of desktop with partial name, return -1 if no desktop found
 			int index = -1;
 
+$(if (-not $Windows21H2) {@"
 			for (int i = 0; i < DesktopManager.VirtualDesktopManagerInternal.GetCount(); i++)
+"@ } else {@"
+			for (int i = 0; i < DesktopManager.VirtualDesktopManagerInternal.GetCount(IntPtr.Zero); i++)
+"@ })
 			{ // loop through all virtual desktops and compare partial name to desktop name
 				if (DesktopNameFromIndex(i).ToUpper().IndexOf(partialName.ToUpper()) >= 0)
 				{ index = i;
@@ -514,7 +664,11 @@ Console.WriteLine("Name of desktop: " + desktopName);
 
 		public static Desktop Create()
 		{ // create a new desktop
+$(if (-not $Windows21H2) {@"
 			return new Desktop(DesktopManager.VirtualDesktopManagerInternal.CreateDesktop());
+"@ } else {@"
+			return new Desktop(DesktopManager.VirtualDesktopManagerInternal.CreateDesktop(IntPtr.Zero));
+"@ })
 		}
 
 		public void Remove(Desktop fallback = null)
@@ -539,22 +693,59 @@ Console.WriteLine("Name of desktop: " + desktopName);
 			DesktopManager.VirtualDesktopManagerInternal.RemoveDesktop(ivd, fallbackdesktop);
 		}
 
+$(if ($Windows21H2) {@"
+		public static void RemoveAll()
+		{ // remove all desktops but visible
+			DesktopManager.VirtualDesktopManagerInternal.SetDesktopIsPerMonitor(true);
+		}
+
+		public void Move(int index)
+		{ // move current desktop to desktop in index (-> index = 0..Count-1)
+			DesktopManager.VirtualDesktopManagerInternal.MoveDesktop(ivd, IntPtr.Zero, index);
+		}
+
 		public void SetName(string Name)
-		{ // set name for desktop, empty string removes names
+		{ // set name for desktop, empty string removes name
+			DesktopManager.VirtualDesktopManagerInternal.SetDesktopName(this.ivd, Name);
+		}
+
+		public void SetWallpaperPath(string Path)
+		{ // set path for wallpaper, empty string removes path
+			if (string.IsNullOrEmpty(Path)) throw new ArgumentNullException();
+			DesktopManager.VirtualDesktopManagerInternal.SetDesktopWallpaper(this.ivd, Path);
+		}
+
+		public static void SetAllWallpaperPaths(string Path)
+		{ // set wallpaper path for all desktops
+			if (string.IsNullOrEmpty(Path)) throw new ArgumentNullException();
+			DesktopManager.VirtualDesktopManagerInternal.UpdateWallpaperPathForAllDesktops(Path);
+		}
+"@ } else {@"
+		public void SetName(string Name)
+		{ // set name for desktop, empty string removes name
 			if (DesktopManager.VirtualDesktopManagerInternal2 != null)
 			{ // only if interface to set name is present
 				DesktopManager.VirtualDesktopManagerInternal2.SetName(this.ivd, Name);
 			}
 		}
+"@ })
 
 		public bool IsVisible
 		{ // return true if this desktop is the current displayed one
+$(if (-not $Windows21H2) {@"
 			get { return object.ReferenceEquals(ivd, DesktopManager.VirtualDesktopManagerInternal.GetCurrentDesktop()); }
+"@ } else {@"
+			get { return object.ReferenceEquals(ivd, DesktopManager.VirtualDesktopManagerInternal.GetCurrentDesktop(IntPtr.Zero)); }
+"@ })
 		}
 
 		public void MakeVisible()
 		{ // make this desktop visible
+$(if (-not $Windows21H2) {@"
 			DesktopManager.VirtualDesktopManagerInternal.SwitchDesktop(ivd);
+"@ } else {@"
+			DesktopManager.VirtualDesktopManagerInternal.SwitchDesktop(IntPtr.Zero, ivd);
+"@ })
 		}
 
 		public Desktop Left
@@ -585,7 +776,10 @@ Console.WriteLine("Name of desktop: " + desktopName);
 
 		public void MoveWindow(IntPtr hWnd)
 		{ // move window to this desktop
+			int processId;
 			if (hWnd == IntPtr.Zero) throw new ArgumentNullException();
+			GetWindowThreadProcessId(hWnd, out processId);
+
 			if (hWnd == GetConsoleWindow())
 			{ // own window
 				try // the easy way (powershell's own console)
@@ -603,7 +797,14 @@ Console.WriteLine("Name of desktop: " + desktopName);
 			{ // window of other process
 				IApplicationView view;
 				DesktopManager.ApplicationViewCollection.GetViewForHwnd(hWnd, out view);
-				DesktopManager.VirtualDesktopManagerInternal.MoveViewToDesktop(view, ivd);
+				try {
+					DesktopManager.VirtualDesktopManagerInternal.MoveViewToDesktop(view, ivd);
+				}
+				catch
+				{ // could not move active window, try main window (or whatever windows thinks is the main window)
+					DesktopManager.ApplicationViewCollection.GetViewForHwnd(System.Diagnostics.Process.GetProcessById(processId).MainWindowHandle, out view);
+					DesktopManager.VirtualDesktopManagerInternal.MoveViewToDesktop(view, ivd);
+				}
 			}
 		}
 
@@ -762,44 +963,87 @@ Updated: 2020/06/27
 }
 
 
-function Get-DesktopList
+if ($Windows21H2)
 {
-<#
-.SYNOPSIS
-Get list of virtual desktops
-.DESCRIPTION
-Get list of virtual desktops
-.INPUTS
-None
-.OUTPUTS
-Object
-.EXAMPLE
-Get-DesktopList
-
-Get list of virtual desktops
-.LINK
-https://github.com/MScholtes/PSVirtualDesktop
-.LINK
-https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
-.LINK
-https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79cc5
-.NOTES
-Author: Markus Scholtes
-Created: 2020/06/27
-#>
-	$DesktopList = @()
-	for ($I = 0; $I -lt [VirtualDesktop.Desktop]::Count; $I++)
+	function Get-DesktopList
 	{
-		$DesktopList += [PSCustomObject]@{
-			Number = $I
-			Name = [VirtualDesktop.Desktop]::DesktopNameFromIndex($I)
-			Visible = if ([VirtualDesktop.Desktop]::FromDesktop([VirtualDesktop.Desktop]::Current) -eq $I) { $TRUE } else { $FALSE }
+	<#
+	.SYNOPSIS
+	Get list of virtual desktops
+	.DESCRIPTION
+	Get list of virtual desktops
+	.INPUTS
+	None
+	.OUTPUTS
+	Object
+	.EXAMPLE
+	Get-DesktopList
+
+	Get list of virtual desktops
+	.LINK
+	https://github.com/MScholtes/PSVirtualDesktop
+	.LINK
+	https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
+	.LINK
+	https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79cc5
+	.NOTES
+	Author: Markus Scholtes
+	Created: 2020/06/27
+	Updated: 2021/10/17
+	#>
+		$DesktopList = @()
+		for ($I = 0; $I -lt [VirtualDesktop.Desktop]::Count; $I++)
+		{
+			$DesktopList += [PSCustomObject]@{
+				Number = $I
+				Name = [VirtualDesktop.Desktop]::DesktopNameFromIndex($I)
+				Wallpaper = [VirtualDesktop.Desktop]::DesktopWallpaperFromIndex($I)
+				Visible = if ([VirtualDesktop.Desktop]::FromDesktop([VirtualDesktop.Desktop]::Current) -eq $I) { $TRUE } else { $FALSE }
+			}
 		}
+		return $DesktopList
 	}
-
-	return $DesktopList
 }
+else
+{
+	function Get-DesktopList
+	{
+	<#
+	.SYNOPSIS
+	Get list of virtual desktops
+	.DESCRIPTION
+	Get list of virtual desktops
+	.INPUTS
+	None
+	.OUTPUTS
+	Object
+	.EXAMPLE
+	Get-DesktopList
 
+	Get list of virtual desktops
+	.LINK
+	https://github.com/MScholtes/PSVirtualDesktop
+	.LINK
+	https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
+	.LINK
+	https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79cc5
+	.NOTES
+	Author: Markus Scholtes
+	Created: 2020/06/27
+	#>
+		$DesktopList = @()
+		for ($I = 0; $I -lt [VirtualDesktop.Desktop]::Count; $I++)
+		{
+			$DesktopList += [PSCustomObject]@{
+				Number = $I
+				Name = [VirtualDesktop.Desktop]::DesktopNameFromIndex($I)
+				Visible = if ([VirtualDesktop.Desktop]::FromDesktop([VirtualDesktop.Desktop]::Current) -eq $I) { $TRUE } else { $FALSE }
+			}
+		}
+
+		return $DesktopList
+	}
+}
 
 function New-Desktop
 {
@@ -1011,6 +1255,35 @@ Updated: 2020/06/27
 }
 
 
+if ($Windows21H2)
+{
+	function Remove-AllDesktops
+	{
+	<#
+	.SYNOPSIS
+	Remove all virtual desktops but visible
+	.DESCRIPTION
+	Remove all virtual desktops but visible
+	.INPUTS
+	None
+	.OUTPUTS
+	None
+	.EXAMPLE
+	Remove-AllDesktops
+
+	Remove all virtual desktops but visible
+	.LINK
+	https://github.com/MScholtes/PSVirtualDesktop
+	.LINK
+	https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
+	.NOTES
+	Author: Markus Scholtes
+	Created: 2021/10/17
+	#>
+		[VirtualDesktop.Desktop]::RemoveAll()
+	}
+}
+
 function Get-CurrentDesktop
 {
 <#
@@ -1155,7 +1428,7 @@ https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79c
 .NOTES
 Author: Markus Scholtes
 Created: 2017/05/08
-Updated: 2020/06/27
+Updated: 2021/02/28
 #>
 	[OutputType([INT32])]
 	[Cmdletbinding()]
@@ -1163,7 +1436,7 @@ Updated: 2020/06/27
 
 	if ($NULL -eq $Desktop)
 	{
-		$Desktop = [VirtualDesktop.Desktop]::FromDesktop(([VirtualDesktop.Desktop]::Current))
+		$Desktop = [VirtualDesktop.Desktop]::Current
 	}
 
 	if ($Desktop -is [VirtualDesktop.Desktop])
@@ -1178,8 +1451,8 @@ Updated: 2020/06/27
 			$TempIndex = [VirtualDesktop.Desktop]::SearchDesktop($Desktop)
 			if ($TempIndex -ge 0)
 			{
-				Write-Verbose "Desktop number $([VirtualDesktop.Desktop]::FromDesktop(([VirtualDesktop.Desktop]::FromIndex($TempIndex)))) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop([VirtualDesktop.Desktop]::FromIndex($TempIndex)))')"
-				return [VirtualDesktop.Desktop]::FromIndex($TempIndex)
+				Write-Verbose "Desktop number $TempIndex ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop([VirtualDesktop.Desktop]::FromIndex($TempIndex)))')"
+				return $TempIndex
 			}
 			else
 			{
@@ -1234,9 +1507,15 @@ https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79c
 .NOTES
 Author: Markus Scholtes
 Created: 2020/06/27
+Updated: 2021/02/28
 #>
 	[Cmdletbinding()]
 	Param([Parameter(ValueFromPipeline = $TRUE)] $Desktop)
+
+	if ($NULL -eq $Desktop)
+	{
+		$Desktop = [VirtualDesktop.Desktop]::Current
+	}
 
 	if ($Desktop -is [VirtualDesktop.Desktop])
 	{
@@ -1284,15 +1563,18 @@ function Set-DesktopName
 .SYNOPSIS
 Set name of virtual desktop
 .DESCRIPTION
-Set name of virtual desktop
+Set name of virtual desktop.
+If parameter Desktop is not set, the name of the current desktop is used.
 .PARAMETER Desktop
 Number of desktop (starting with 0 to count-1), desktop object or string (part of desktop name)
 .PARAMETER Name
 Name of desktop. If omitted or empty or $NULL, a name will be removed from the desktop.
+.PARAMETER PassThru
+Return virtual desktop
 .INPUTS
 Number of desktop (starting with 0 to count-1), desktop object or string (part of desktop name)
 .OUTPUTS
-None
+None or [VirtualDesktop.Desktop]
 .EXAMPLE
 Set-DesktopName 0 "The first desktop"
 
@@ -1306,9 +1588,13 @@ Remove name of virtual desktop $Desktop
 
 Set name of first virtual desktop whose name contains "desktop"
 .EXAMPLE
-New-Desktop | Set-DesktopName -Name "The new one"
+Set-DesktopName -Name "This is the current desktop"
 
-Create virtual desktop and set its name
+Set name of the current virtual desktop
+.EXAMPLE
+New-Desktop | Set-DesktopName -Name "The new one" -PassThru | Get-DesktopName
+
+Create virtual desktop, set its name and return the new name
 .LINK
 https://github.com/MScholtes/PSVirtualDesktop
 .LINK
@@ -1318,11 +1604,13 @@ https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79c
 .NOTES
 Author: Markus Scholtes
 Created: 2020/06/27
+Updated: 2021/10/18
 #>
 	[Cmdletbinding()]
-	Param([Parameter(ValueFromPipeline = $TRUE)] $Desktop, [Parameter(ValueFromPipeline = $FALSE)] $Name)
+	Param([Parameter(ValueFromPipeline = $TRUE)] $Desktop, [Parameter(ValueFromPipeline = $FALSE)] $Name, [SWITCH]$PassThru)
 
 	if ($NULL -eq $Name) { $Name = "" }
+	if ($NULL -eq $Desktop) { $Desktop = [VirtualDesktop.Desktop]::Current }
 
 	if ($Desktop -is [VirtualDesktop.Desktop])
 	{
@@ -1331,19 +1619,20 @@ Created: 2020/06/27
 		else
 		{ Write-Verbose "Remove name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($Desktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($Desktop))')" }
 		$Desktop.SetName($Name)
+		$ActiveDesktop = $Desktop
 	}
 	else
 	{
 		if ($Desktop -is [ValueType])
 		{
-			$TempDesktop = [VirtualDesktop.Desktop]::FromIndex($Desktop)
-			if ($TempDesktop)
+			$ActiveDesktop = [VirtualDesktop.Desktop]::FromIndex($Desktop)
+			if ($ActiveDesktop)
 			{
 				if ($Name -ne "")
-				{ Write-Verbose "Set name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($TempDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($TempDesktop))') to '$Name'" }
+				{ Write-Verbose "Set name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($ActiveDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($ActiveDesktop))') to '$Name'" }
 				else
-				{ Write-Verbose "Remove name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($TempDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($TempDesktop))')" }
-				$TempDesktop.SetName($Name)
+				{ Write-Verbose "Remove name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($ActiveDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($ActiveDesktop))')" }
+				$ActiveDesktop.SetName($Name)
 			}
 		}
 		else
@@ -1353,11 +1642,12 @@ Created: 2020/06/27
 				$TempIndex = [VirtualDesktop.Desktop]::SearchDesktop($Desktop)
 				if ($TempIndex -ge 0)
 				{
+					$ActiveDesktop = [VirtualDesktop.Desktop]::FromIndex($TempIndex)
 					if ($Name -ne "")
-					{ Write-Verbose "Set name of desktop number $([VirtualDesktop.Desktop]::FromDesktop(([VirtualDesktop.Desktop]::FromIndex($TempIndex)))) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop([VirtualDesktop.Desktop]::FromIndex($TempIndex)))') to '$Name'" }
+					{ Write-Verbose "Set name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($ActiveDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($ActiveDesktop))') to '$Name'" }
 					else
-					{ Write-Verbose "Remove name of desktop number $([VirtualDesktop.Desktop]::FromDesktop(([VirtualDesktop.Desktop]::FromIndex($TempIndex)))) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop([VirtualDesktop.Desktop]::FromIndex($TempIndex)))')" }
-					([VirtualDesktop.Desktop]::FromIndex($TempIndex)).Setname($Name)
+					{ Write-Verbose "Remove name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($ActiveDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($ActiveDesktop))')" }
+					$ActiveDesktop.SetName($Name)
 				}
 				else
 				{
@@ -1368,6 +1658,159 @@ Created: 2020/06/27
 			{
 				Write-Error "Parameter -Desktop has to be a desktop object, an integer or a string"
 			}
+		}
+	}
+	if ($PassThru)
+	{
+		return $ActiveDesktop
+	}
+}
+
+
+if ($Windows21H2)
+{
+	function Set-DesktopWallpaper
+	{
+	<#
+	.SYNOPSIS
+	Set wallpaper of virtual desktop
+	.DESCRIPTION
+	Set wallpaper of virtual desktop
+	.PARAMETER Desktop
+	Number of desktop (starting with 0 to count-1), desktop object or string (part of desktop name)
+	If parameter Desktop is not set, the name of the current desktop is used.
+	.PARAMETER Path
+	Path to wallpaper
+	.PARAMETER PassThru
+	Return virtual desktop
+	.INPUTS
+	Number of desktop (starting with 0 to count-1), desktop object or string (part of desktop name)
+	.OUTPUTS
+	None or [VirtualDesktop.Desktop]
+	.EXAMPLE
+	Set-DesktopWallpaper 0 "C:\Users\VD\Pictures\NicePic.jpg"
+
+	Set wallpaper of first desktop
+	.EXAMPLE
+	Set-DesktopWallpaper -Path "C:\Users\VD\Pictures\CurrentDesktopPic.jpg"
+
+	Set wallpaper of current desktop
+	.EXAMPLE
+	"First found" | Set-DesktopWallpaper -Path "C:\Windows\Web\Wallpaper\Windows\img0.jpg"
+
+	Set wallpaper of first virtual desktop whose name contains "First found"
+	.EXAMPLE
+	New-Desktop | Set-DesktopWallpaper -Path "Background.jpg" -PassThru | Get-DesktopName
+
+	Create virtual desktop, set its wallpaper and return the name
+	.LINK
+	https://github.com/MScholtes/PSVirtualDesktop
+	.LINK
+	https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
+	.NOTES
+	Author: Markus Scholtes
+	Created: 2021/10/18
+	#>
+		[Cmdletbinding()]
+		Param([Parameter(ValueFromPipeline = $TRUE)] $Desktop, [Parameter(ValueFromPipeline = $FALSE)] $Path, [SWITCH]$PassThru)
+
+		if ($NULL -eq $Desktop) { $Desktop = [VirtualDesktop.Desktop]::Current }
+
+		if ($Desktop -is [VirtualDesktop.Desktop])
+		{
+			if ([STRING]::IsNullOrEmpty($Path))
+			{ Write-Error "Wallpaper path is missing" }
+			else
+			{ Write-Verbose "Set wallpaper of desktop number $([VirtualDesktop.Desktop]::FromDesktop($Desktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($Desktop))') to '$Path'"
+				$Desktop.SetWallpaperPath($Path)
+			}
+			$ActiveDesktop = $Desktop
+		}
+		else
+		{
+			if ($Desktop -is [ValueType])
+			{
+				$ActiveDesktop = [VirtualDesktop.Desktop]::FromIndex($Desktop)
+				if ($ActiveDesktop)
+				{
+					if ([STRING]::IsNullOrEmpty($Path))
+					{ Write-Error "Wallpaper path is missing" }
+					else
+					{ Write-Verbose "Set name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($ActiveDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($ActiveDesktop))') to '$Path'"
+						$ActiveDesktop.SetWallpaperPath($Path)
+					}
+				}
+			}
+			else
+			{
+				if ($Desktop -is [STRING])
+				{
+					$TempIndex = [VirtualDesktop.Desktop]::SearchDesktop($Desktop)
+					if ($TempIndex -ge 0)
+					{
+						$ActiveDesktop = [VirtualDesktop.Desktop]::FromIndex($TempIndex)
+						if ([STRING]::IsNullOrEmpty($Path))
+						{ Write-Error "Wallpaper path is missing" }
+						else
+						{ Write-Verbose "Set name of desktop number $([VirtualDesktop.Desktop]::FromDesktop($ActiveDesktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($ActiveDesktop))') to '$Path'"
+							$ActiveDesktop.SetWallpaperPath($Path)
+						}
+					}
+					else
+					{
+						Write-Error "No desktop with name part '$Desktop' found"
+					}
+				}
+				else
+				{
+					Write-Error "Parameter -Desktop has to be a desktop object, an integer or a string"
+				}
+			}
+		}
+		if ($PassThru)
+		{
+			return $ActiveDesktop
+		}
+	}
+
+
+	function Set-AllDesktopWallpapers
+	{
+	<#
+	.SYNOPSIS
+	Set wallpaper of all virtual desktops
+	.DESCRIPTION
+	Set wallpaper of all virtual desktops
+	.PARAMETER Path
+	Path to wallpaper
+	.INPUTS
+	String
+	.OUTPUTS
+	None
+	.EXAMPLE
+	Set-AllDesktopWallpapers -Path "C:\Users\VD\Pictures\NicePic.jpg"
+
+	Set wallpaper of all desktops
+	.EXAMPLE
+	"C:\Windows\Web\Wallpaper\Windows\img0.jpg" | Set-AllDesktopWallpapers
+
+	Set wallpaper of all desktops
+	.LINK
+	https://github.com/MScholtes/PSVirtualDesktop
+	.LINK
+	https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
+	.NOTES
+	Author: Markus Scholtes
+	Created: 2021/10/17
+	#>
+		[Cmdletbinding()]
+		Param([Parameter(ValueFromPipeline = $TRUE)] $Path)
+
+		if ([STRING]::IsNullOrEmpty($Path))
+		{ Write-Error "Wallpaper path is missing" }
+		else
+		{ Write-Verbose "Set wallpaper of all desktops to '$Path'"
+			[VirtualDesktop.Desktop]::SetAllWallpaperPaths($Path)
 		}
 	}
 }
@@ -1677,6 +2120,58 @@ Updated: 2020/06/27
 	}
 }
 
+
+if ($Windows21H2)
+{
+	function Move-Desktop
+	{
+	<#
+	.SYNOPSIS
+	Move current desktop to other virtual desktop
+	.DESCRIPTION
+	Move current desktop to other virtual desktop.
+	.PARAMETER Desktop
+	Desktop object to move current desktop to
+	.INPUTS
+	None
+	.OUTPUTS
+	Desktop object
+	.EXAMPLE
+	Move-Window -Desktop (Get-Desktop "Other Desktop")
+
+	Move current virtual desktop to desktop "Other Desktop"
+	.EXAMPLE
+	Move-Window -Desktop (Get-RightDesktop)
+
+	Move current virtual desktop to the "right"
+	.LINK
+	https://github.com/MScholtes/PSVirtualDesktop
+	.LINK
+	https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop
+	.NOTES
+	Author: Markus Scholtes
+	Created: 2021/10/17
+	#>
+		[Cmdletbinding()]
+		Param([Parameter(ValueFromPipeline = $TRUE)] $Desktop)
+
+		if ($NULL -eq $Desktop)
+		{
+			Write-Error "Parameter -Desktop missing"
+			return $NULL
+		}
+
+		if ($Desktop -is [VirtualDesktop.Desktop])
+		{
+			Write-Verbose "Moving current desktop to desktop number $([VirtualDesktop.Desktop]::FromDesktop($Desktop)) ('$([VirtualDesktop.Desktop]::DesktopNameFromDesktop($Desktop))')"
+			([VirtualDesktop.Desktop]::Current).Move([VirtualDesktop.Desktop]::FromDesktop($Desktop))
+			return ([VirtualDesktop.Desktop]::Current)
+		}
+
+		Write-Error "Parameter -Desktop has to be a desktop object"
+		return $NULL
+	}
+}
 
 function Move-Window
 {
@@ -2399,35 +2894,5 @@ Updated: 2020/06/27
 	}
 }
 
-# SIG # Begin signature block
-# MIIFdgYJKoZIhvcNAQcCoIIFZzCCBWMCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
-# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUKQvZ7PK5HjvGJcDsiupKlJDJ
-# ZBOgggMOMIIDCjCCAfKgAwIBAgIQJ7QhgRtobKJFyrX3zvZHpjANBgkqhkiG9w0B
-# AQUFADAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25pbmcwHhcNMjAwOTAyMTUw
-# NjQ0WhcNMjEwOTAyMTUyNjQ0WjAdMRswGQYDVQQDDBJMb2NhbCBDb2RlIFNpZ25p
-# bmcwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDZgckf5EM3ekbD9UHM
-# uPAb3n+ruyIkD5y/uRfKbjQ9R6hpjzz5MK8qD9EOPn1rX9QUy1QJyuGQENCbOAot
-# k9UE6NUtdv6cOT+4EHtcyfpW03l1LWaBpplS+4CBddfig03rpyaqQuVJe93WQ4Ar
-# eUAvWozM9/Smt39MxwsyneTAHWzPFJnBXBry3OfGqg7sfJdFh02+KDOfgBfDUrGT
-# dFiXzwPyZt1MfuHbQUvd+o1ErneWSqKXFjnxP/8va7mSLFjXEDZqLhm+p96jlGEs
-# 0nNSLf7AfG/ZMTKfMY/X77fd08U1Dy//xc/e4qkraQfiN5TJCz8im/E6WFzrF1eQ
-# XRJFAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcD
-# AzAdBgNVHQ4EFgQU9nmxQrbevGH/Lmr0GxeZa9LIwJ0wDQYJKoZIhvcNAQEFBQAD
-# ggEBAC4XGOmt8kosp5Wdu5FbVmLUanHNUcA0S46UyEyNK8yBDnGiNJf0hVG5D/Jh
-# w4mk3BuKZjFcsV5bA1ZKcmE6hrUFxmGGfgnFmEGmdI+Tt9vR0bv3re7SG4jlaMnu
-# VgOEjn+AIpon8djn10Warb6q45Q28O+3lWP0D832Sx69sI06QNbpzB88QQZJNgBD
-# 29AmDvESdzCyCRH1aJAN93AgjwmXkTzgfnWL3N6myKYRMmSfShdJD2s/GxoB0hZy
-# 1OleXmsYOEZP9KUkqo5p7eW0Koxq0EdzTmuvJSUeRr7MT+PpVrp/vaKYRg/DTGxW
-# jcTmxfUgz2AjWi+8UcjXZAjw95kxggHSMIIBzgIBATAxMB0xGzAZBgNVBAMMEkxv
-# Y2FsIENvZGUgU2lnbmluZwIQJ7QhgRtobKJFyrX3zvZHpjAJBgUrDgMCGgUAoHgw
-# GAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGC
-# NwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQx
-# FgQUVrZ5UfNgnG0IauJOd1N2B+cVK6AwDQYJKoZIhvcNAQEBBQAEggEADruTNE5m
-# OKH2XEhyw9GqI4Cj+NRsXYsTuHQVTMgaDFSLOAK/M8nOzIcswySkQr/DXgCdxBWU
-# XNp8tnVY8PL9Y6WlADXYjElxLrzjAk/yJj5/zh5ncKxojTBUt+Ouy1qeIYpBKn3B
-# 2c+xD7xcBXrP5xxKfbV3gsvSY6oPG8DScSkuwf9LGO+j3BW0UpmPtrZ8cQyQpNJd
-# jxJeo6xACk1FpHAYFZrinsvt0hgAC/pSDQmqT7OSn8/RoEUHRbZFG8EhNyRtg6Wp
-# G7TA9d7QBj/eLxzkHNNw+baMJR3Rc4uK90Hy0LdlUzrVmc8Bni83A6C5CE19evRW
-# neV44NZUhc51jQ==
-# SIG # End signature block
+# Clean up variable
+Remove-Variable -Name Windows21H2
