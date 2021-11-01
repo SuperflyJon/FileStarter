@@ -30,4 +30,4 @@ Simple processes (e.g. notepad) just create a new window and will work easily.  
 
 ## Links
 
-The multiple desktop logic is in the VirtualDesktop.ps1 file which is a direct copy from [this microsoft scipt](https://gallery.technet.microsoft.com/scriptcenter/Powershell-commands-to-d0e79cc5)
+The multiple desktop logic is in the VirtualDesktop.ps1 file which is a direct copy from [PSVirtualDesktop](https://github.com/MScholtes/TechNet-Gallery/tree/master/VirtualDesktop)
