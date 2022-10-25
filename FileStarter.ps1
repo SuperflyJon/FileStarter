@@ -561,7 +561,7 @@ function TryToMove($object)
 
 #Make running window on top and locked to all desktops (so output can be seen)
 $currentWindow = Get-Process -ID $PID | % { $_.MainWindowHandle }
-if ($currentWindow)
+if ($currentWindow -ne 0)
 {
 	$currentWindow | Pin-Window
 	$currentDesktop = Get-Desktop
@@ -629,7 +629,7 @@ foreach ($object in $objects)
     }
 }
 
-if ($currentWindow)
+if ($currentWindow -ne 0)
 {
 	#Restore window to normal state
 	$currentWindow | UnPin-Window
